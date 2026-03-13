@@ -1,8 +1,19 @@
-import { departments } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { Department } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Monitor, Printer, MapPin } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Departments() {
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/api/departments")
+      .then(res => res.json())
+      .then(data => setDepartments(data))
+      .catch(() => toast.error("Failed to fetch departments"));
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { pcs as initialPcs, PC } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { PC } from "@/lib/mock-data";
 import { DataTable } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -14,39 +14,89 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
+const API = "http://localhost:3000/api/pcs";
+
+// ✅ Field is outside, receives onChange as a prop instead of using setForm directly
+const Field = ({ label, name, value, placeholder, onChange }: {
+  label: string;
+  name: string;
+  value: string;
+  placeholder?: string;
+  onChange: (name: string, value: string) => void;
+}) => (
+  <div className="space-y-1">
+    <Label className="text-xs">{label}</Label>
+    <Input value={value} placeholder={placeholder} onChange={(e) => onChange(name, e.target.value)} />
+  </div>
+);
+
 export default function PCInventory() {
-  const [pcList, setPcList] = useState<PC[]>(initialPcs);
+  const [pcList, setPcList] = useState<PC[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPc, setEditingPc] = useState<PC | null>(null);
   const [viewPc, setViewPc] = useState<PC | null>(null);
 
   const emptyPc: Omit<PC, "id"> = {
-    employeeName: "", employeeId: "", serialNumber: "", manufacturer: "", model: "",
-    ipAddress: "", macAddress: "", ram: "", storage: "", dateOfIssue: "", location: "", assignedTo: "", status: "available",
+    employeeName: "", employeeId: "", serialNumber: "", manufacturer: "",
+    model: "", ipAddress: "", macAddress: "", ram: "", storage: "",
+    dateOfIssue: "", location: "", assignedTo: "", status: "available",
   };
   const [form, setForm] = useState<Omit<PC, "id">>(emptyPc);
+
+  // ✅ handler passed down to Field
+  const handleFieldChange = (name: string, value: string) => {
+    setForm(f => ({ ...f, [name]: value }));
+  };
+
+  useEffect(() => {
+    fetch(API)
+      .then(res => res.json())
+      .then(data => setPcList(data))
+      .catch(() => toast.error("Failed to fetch PCs from server"));
+  }, []);
 
   const openAdd = () => { setEditingPc(null); setForm(emptyPc); setDialogOpen(true); };
   const openEdit = (pc: PC) => { setEditingPc(pc); setForm({ ...pc }); setDialogOpen(true); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.serialNumber || !form.manufacturer || !form.model) {
       toast.error("Please fill required fields");
       return;
     }
-    if (editingPc) {
-      setPcList((prev) => prev.map((p) => (p.id === editingPc.id ? { ...form, id: editingPc.id } : p)));
-      toast.success("PC updated");
-    } else {
-      setPcList((prev) => [...prev, { ...form, id: String(Date.now()) }]);
-      toast.success("PC added");
+    try {
+      if (editingPc) {
+        const res = await fetch(`${API}/${editingPc.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        const updated: PC = await res.json();
+        setPcList(prev => prev.map(p => p.id === editingPc.id ? updated : p));
+        toast.success("PC updated");
+      } else {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        const created: PC = await res.json();
+        setPcList(prev => [...prev, created]);
+        toast.success("PC added");
+      }
+      setDialogOpen(false);
+    } catch {
+      toast.error("Failed to save PC");
     }
-    setDialogOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setPcList((prev) => prev.filter((p) => p.id !== id));
-    toast.success("PC deleted");
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`${API}/${id}`, { method: "DELETE" });
+      setPcList(prev => prev.filter(p => p.id !== id));
+      toast.success("PC deleted");
+    } catch {
+      toast.error("Failed to delete PC");
+    }
   };
 
   const columns = [
@@ -59,13 +109,6 @@ export default function PCInventory() {
     { key: "location" as keyof PC, label: "Location", sortable: true },
     { key: "status" as keyof PC, label: "Status", render: (v: PC[keyof PC]) => <StatusBadge status={String(v)} /> },
   ];
-
-  const Field = ({ label, name, value, placeholder }: { label: string; name: string; value: string; placeholder?: string }) => (
-    <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
-      <Input value={value} placeholder={placeholder} onChange={(e) => setForm((f) => ({ ...f, [name]: e.target.value }))} />
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -83,21 +126,21 @@ export default function PCInventory() {
               <DialogTitle>{editingPc ? "Edit PC" : "Add New PC"}</DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Employee Name" name="employeeName" value={form.employeeName} />
-              <Field label="Employee ID" name="employeeId" value={form.employeeId} />
-              <Field label="Serial Number *" name="serialNumber" value={form.serialNumber} />
-              <Field label="Manufacturer *" name="manufacturer" value={form.manufacturer} />
-              <Field label="Model *" name="model" value={form.model} />
-              <Field label="IP Address" name="ipAddress" value={form.ipAddress} placeholder="192.168.x.x" />
-              <Field label="MAC Address" name="macAddress" value={form.macAddress} />
-              <Field label="RAM" name="ram" value={form.ram} placeholder="16GB" />
-              <Field label="Storage" name="storage" value={form.storage} placeholder="512GB SSD" />
-              <Field label="Date of Issue" name="dateOfIssue" value={form.dateOfIssue} placeholder="YYYY-MM-DD" />
-              <Field label="Location" name="location" value={form.location} />
-              <Field label="Assigned To" name="assignedTo" value={form.assignedTo} />
+              <Field label="Employee Name" name="employeeName" value={form.employeeName} onChange={handleFieldChange} />
+              <Field label="Employee ID" name="employeeId" value={form.employeeId} onChange={handleFieldChange} />
+              <Field label="Serial Number *" name="serialNumber" value={form.serialNumber} onChange={handleFieldChange} />
+              <Field label="Manufacturer *" name="manufacturer" value={form.manufacturer} onChange={handleFieldChange} />
+              <Field label="Model *" name="model" value={form.model} onChange={handleFieldChange} />
+              <Field label="IP Address" name="ipAddress" value={form.ipAddress} placeholder="192.168.x.x" onChange={handleFieldChange} />
+              <Field label="MAC Address" name="macAddress" value={form.macAddress} onChange={handleFieldChange} />
+              <Field label="RAM" name="ram" value={form.ram} placeholder="16GB" onChange={handleFieldChange} />
+              <Field label="Storage" name="storage" value={form.storage} placeholder="512GB SSD" onChange={handleFieldChange} />
+              <Field label="Date of Issue" name="dateOfIssue" value={form.dateOfIssue} placeholder="YYYY-MM-DD" onChange={handleFieldChange} />
+              <Field label="Location" name="location" value={form.location} onChange={handleFieldChange} />
+              <Field label="Assigned To" name="assignedTo" value={form.assignedTo} onChange={handleFieldChange} />
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as PC["status"] }))}>
+                <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v as PC["status"] }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="assigned">Assigned</SelectItem>
@@ -133,9 +176,7 @@ export default function PCInventory() {
 
       <Dialog open={!!viewPc} onOpenChange={(o) => !o && setViewPc(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>PC Details</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>PC Details</DialogTitle></DialogHeader>
           {viewPc && (
             <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
               {Object.entries(viewPc).filter(([k]) => k !== "id").map(([key, val]) => (

@@ -1,11 +1,12 @@
-import { pcs, printers } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { PC, Printer } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, FileSpreadsheet, Monitor, Printer } from "lucide-react";
+import { Download, FileSpreadsheet, Monitor, Printer as PrinterIcon } from "lucide-react";
 import { toast } from "sonner";
 
 function exportToCsv(data: Record<string, unknown>[], filename: string) {
-  if (!data.length) return;
+  if (!data.length) { toast.error("No data to export"); return; }
   const headers = Object.keys(data[0]);
   const csv = [
     headers.join(","),
@@ -19,35 +20,51 @@ function exportToCsv(data: Record<string, unknown>[], filename: string) {
   toast.success(`${filename} exported`);
 }
 
-const reports = [
-  {
-    title: "PC Inventory Report",
-    description: "Export all PC records with device specs and assignments",
-    icon: Monitor,
-    count: pcs.length,
-    action: () => exportToCsv(pcs as unknown as Record<string, unknown>[], "pc-inventory.csv"),
-  },
-  {
-    title: "Printer Inventory Report",
-    description: "Export all printer records with department info",
-    icon: Printer,
-    count: printers.length,
-    action: () => exportToCsv(printers as unknown as Record<string, unknown>[], "printer-inventory.csv"),
-  },
-  {
-    title: "Device Assignment Report",
-    description: "Assigned devices with employee details",
-    icon: FileSpreadsheet,
-    count: pcs.filter((p) => p.status === "assigned").length,
-    action: () =>
-      exportToCsv(
-        pcs.filter((p) => p.status === "assigned") as unknown as Record<string, unknown>[],
-        "assignments.csv"
-      ),
-  },
-];
-
 export default function Reports() {
+  const [pcs, setPcs] = useState<PC[]>([]);
+  const [printers, setPrinters] = useState<Printer[]>([]);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/api/pcs")
+      .then(res => res.json())
+      .then(data => setPcs(data))
+      .catch(() => toast.error("Failed to fetch PCs"));
+
+    fetch("http://localhost:3000/api/printers")
+      .then(res => res.json())
+      .then(data => setPrinters(data))
+      .catch(() => toast.error("Failed to fetch printers"));
+  }, []);
+
+  // ✅ reports defined inside component so they react to state
+  const reports = [
+    {
+      title: "PC Inventory Report",
+      description: "Export all PC records with device specs and assignments",
+      icon: Monitor,
+      count: pcs.length,
+      action: () => exportToCsv(pcs as unknown as Record<string, unknown>[], "pc-inventory.csv"),
+    },
+    {
+      title: "Printer Inventory Report",
+      description: "Export all printer records with department info",
+      icon: PrinterIcon,
+      count: printers.length,
+      action: () => exportToCsv(printers as unknown as Record<string, unknown>[], "printer-inventory.csv"),
+    },
+    {
+      title: "Device Assignment Report",
+      description: "Assigned devices with employee details",
+      icon: FileSpreadsheet,
+      count: pcs.filter((p) => p.status === "assigned").length,
+      action: () =>
+        exportToCsv(
+          pcs.filter((p) => p.status === "assigned") as unknown as Record<string, unknown>[],
+          "assignments.csv"
+        ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>

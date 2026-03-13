@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { printers as initialPrinters, Printer } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { Printer } from "@/lib/mock-data";
 import { DataTable } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,22 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
+const API = "http://localhost:3000/api/printers";
+
+const Field = ({ label, name, value, onChange }: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (name: string, value: string) => void;
+}) => (
+  <div className="space-y-1">
+    <Label className="text-xs">{label}</Label>
+    <Input value={value} onChange={(e) => onChange(name, e.target.value)} />
+  </div>
+);
+
 export default function PrinterInventory() {
-  const [list, setList] = useState<Printer[]>(initialPrinters);
+  const [list, setList] = useState<Printer[]>([]);  // ✅ empty, fills from API
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Printer | null>(null);
 
@@ -25,22 +39,59 @@ export default function PrinterInventory() {
   };
   const [form, setForm] = useState<Omit<Printer, "id">>(empty);
 
+  // ✅ Fetch from MongoDB on mount
+  useEffect(() => {
+    fetch(API)
+      .then(res => res.json())
+      .then(data => setList(data))
+      .catch(() => toast.error("Failed to fetch printers"));
+  }, []);
+
   const openAdd = () => { setEditing(null); setForm(empty); setDialogOpen(true); };
   const openEdit = (p: Printer) => { setEditing(p); setForm({ ...p }); setDialogOpen(true); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.printerName || !form.printerModel) { toast.error("Fill required fields"); return; }
-    if (editing) {
-      setList((prev) => prev.map((p) => (p.id === editing.id ? { ...form, id: editing.id } : p)));
-      toast.success("Printer updated");
-    } else {
-      setList((prev) => [...prev, { ...form, id: String(Date.now()) }]);
-      toast.success("Printer added");
+    try {
+      if (editing) {
+        const res = await fetch(`${API}/${editing.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        const updated: Printer = await res.json();
+        setList(prev => prev.map(p => p.id === editing.id ? updated : p));
+        toast.success("Printer updated");
+      } else {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        const created: Printer = await res.json();
+        setList(prev => [...prev, created]);
+        toast.success("Printer added");
+      }
+      setDialogOpen(false);
+    } catch {
+      toast.error("Failed to save printer");
     }
-    setDialogOpen(false);
   };
 
-  const handleDelete = (id: string) => { setList((prev) => prev.filter((p) => p.id !== id)); toast.success("Deleted"); };
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(`Delete failed: ${err.error}`);
+        return;
+      }
+      setList(prev => prev.filter(p => p.id !== id));
+      toast.success("Deleted");
+    } catch {
+      toast.error("Network error — could not reach server");
+    }
+  };
 
   const columns = [
     { key: "printerName" as keyof Printer, label: "Name", sortable: true },
@@ -52,12 +103,9 @@ export default function PrinterInventory() {
     { key: "status" as keyof Printer, label: "Status", render: (v: Printer[keyof Printer]) => <StatusBadge status={String(v)} /> },
   ];
 
-  const Field = ({ label, name, value }: { label: string; name: string; value: string }) => (
-    <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
-      <Input value={value} onChange={(e) => setForm((f) => ({ ...f, [name]: e.target.value }))} />
-    </div>
-  );
+  const handleFieldChange = (name: string, value: string) => {
+    setForm(f => ({ ...f, [name]: value }));
+  };
 
   return (
     <div className="space-y-6">
@@ -73,14 +121,14 @@ export default function PrinterInventory() {
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>{editing ? "Edit" : "Add"} Printer</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Printer Name *" name="printerName" value={form.printerName} />
-              <Field label="Model *" name="printerModel" value={form.printerModel} />
-              <Field label="Toner Cartridge" name="tonerCartridge" value={form.tonerCartridge} />
-              <Field label="Drum Unit" name="drumUnit" value={form.drumUnit} />
-              <Field label="Department" name="department" value={form.department} />
-              <Field label="IP Address" name="ipAddress" value={form.ipAddress} />
-              <Field label="Password" name="password" value={form.password} />
-              <Field label="Location" name="location" value={form.location} />
+              <Field label="Printer Name *" name="printerName" value={form.printerName} onChange={handleFieldChange} />
+              <Field label="Model *" name="printerModel" value={form.printerModel} onChange={handleFieldChange} />
+              <Field label="Toner Cartridge" name="tonerCartridge" value={form.tonerCartridge} onChange={handleFieldChange} />
+              <Field label="Drum Unit" name="drumUnit" value={form.drumUnit} onChange={handleFieldChange} />
+              <Field label="Department" name="department" value={form.department} onChange={handleFieldChange} />
+              <Field label="IP Address" name="ipAddress" value={form.ipAddress} onChange={handleFieldChange} />
+              <Field label="Password" name="password" value={form.password} onChange={handleFieldChange} />
+              <Field label="Location" name="location" value={form.location} onChange={handleFieldChange} />
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Status</Label>
                 <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as Printer["status"] }))}>

@@ -1,6 +1,7 @@
+import { useState, useEffect } from "react";
 import { Monitor, Printer, Building2, CheckCircle, Package, Clock } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
-import { pcs, printers, departments } from "@/lib/mock-data";
+import { PC, Printer as PrinterType, Department } from "@/lib/mock-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
@@ -8,23 +9,44 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 
-const departmentChartData = departments.map((d) => ({
-  name: d.name,
-  PCs: d.pcCount,
-  Printers: d.printerCount,
-}));
-
-const statusData = [
-  { name: "Assigned", value: pcs.filter((p) => p.status === "assigned").length },
-  { name: "Available", value: pcs.filter((p) => p.status === "available").length },
-  { name: "Maintenance", value: pcs.filter((p) => p.status === "maintenance").length },
-];
-
 const COLORS = ["hsl(173, 80%, 40%)", "hsl(142, 71%, 45%)", "hsl(38, 92%, 50%)"];
 
 export default function Dashboard() {
+  const [pcs, setPcs] = useState<PC[]>([]);
+  const [printers, setPrinters] = useState<PrinterType[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  useEffect(() => {
+    fetch("http://localhost:8080/api/pcs")
+      .then(res => res.json())
+      .then(data => setPcs(data))
+      .catch(err => console.error("Failed to fetch PCs", err));
+
+    fetch("http://localhost:8080/api/printers")
+      .then(res => res.json())
+      .then(data => setPrinters(data))
+      .catch(err => console.error("Failed to fetch printers", err));
+
+    fetch("http://localhost:8080/api/departments")
+      .then(res => res.json())
+      .then(data => setDepartments(data))
+      .catch(err => console.error("Failed to fetch departments", err));
+  }, []);
+
   const assigned = pcs.filter((p) => p.status === "assigned").length;
   const available = pcs.filter((p) => p.status === "available").length;
+
+  const departmentChartData = departments.map((d) => ({
+    name: d.name,
+    PCs: d.pcCount,
+    Printers: d.printerCount,
+  }));
+
+  const statusData = [
+    { name: "Assigned", value: pcs.filter((p) => p.status === "assigned").length },
+    { name: "Available", value: pcs.filter((p) => p.status === "available").length },
+    { name: "Maintenance", value: pcs.filter((p) => p.status === "maintenance").length },
+  ];
 
   return (
     <div className="space-y-6">
