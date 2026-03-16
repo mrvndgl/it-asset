@@ -5,26 +5,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Server, AlertCircle } from "lucide-react";
+import { Server, AlertCircle, Loader2 } from "lucide-react";
 
 export default function Login() {
   const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
     if (!employeeId.trim() || !password.trim()) {
       setError("Please fill in all fields");
       return;
     }
-    if (login(employeeId.trim(), password)) {
-      navigate("/");
-    } else {
-      setError("Invalid credentials");
+
+    setLoading(true);
+    try {
+      const success = await login(employeeId.trim(), password);
+      if (success) {
+        navigate("/");
+      } else {
+        setError("Invalid credentials");
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,6 +66,7 @@ export default function Login() {
                 placeholder="e.g. IT001"
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
@@ -65,10 +77,18 @@ export default function Login() {
                 placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
               />
             </div>
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
               Authorized IT personnel only

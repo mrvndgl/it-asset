@@ -12,6 +12,7 @@ export interface PC {
   dateOfIssue: string;
   location: string;
   assignedTo: string;
+  password: string;
   status: "assigned" | "available" | "maintenance";
 }
 

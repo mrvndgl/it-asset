@@ -10,6 +10,7 @@ import {
 } from "recharts";
 
 const COLORS = ["hsl(173, 80%, 40%)", "hsl(142, 71%, 45%)", "hsl(38, 92%, 50%)"];
+const API = "http://localhost:3000/api";
 
 export default function Dashboard() {
   const [pcs, setPcs] = useState<PC[]>([]);
@@ -17,17 +18,17 @@ export default function Dashboard() {
   const [departments, setDepartments] = useState<Department[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/pcs")
+    fetch(`${API}/pcs`)
       .then(res => res.json())
       .then(data => setPcs(data))
       .catch(err => console.error("Failed to fetch PCs", err));
 
-    fetch("http://localhost:8080/api/printers")
+    fetch(`${API}/printers`)
       .then(res => res.json())
       .then(data => setPrinters(data))
       .catch(err => console.error("Failed to fetch printers", err));
 
-    fetch("http://localhost:8080/api/departments")
+    fetch(`${API}/departments`)
       .then(res => res.json())
       .then(data => setDepartments(data))
       .catch(err => console.error("Failed to fetch departments", err));
@@ -73,7 +74,12 @@ export default function Dashboard() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={departmentChartData} barGap={4}>
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                    interval={0}
+                  />
                   <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip
                     contentStyle={{
