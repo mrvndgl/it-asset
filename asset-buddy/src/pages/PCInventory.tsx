@@ -3,7 +3,7 @@ import { PC } from "@/lib/mock-data";
 import { DataTable } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, EyeOff, Filter } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -60,8 +60,13 @@ const PasswordField = ({ label, name, value, onChange }: {
   );
 };
 
+// ✅ Status filter options
+const STATUS_FILTERS = ["all", "available", "assigned", "maintenance"] as const;
+type StatusFilter = typeof STATUS_FILTERS[number];
+
 export default function PCInventory() {
   const [pcList, setPcList] = useState<PC[]>([]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all"); // ✅ filter state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPc, setEditingPc] = useState<PC | null>(null);
   const [viewPc, setViewPc] = useState<PC | null>(null);
@@ -129,6 +134,11 @@ export default function PCInventory() {
     }
   };
 
+  // ✅ Filtered list based on selected status
+  const filteredPcList = statusFilter === "all"
+    ? pcList
+    : pcList.filter(pc => pc.status === statusFilter);
+
   const columns = [
     { key: "employeeName" as keyof PC, label: "Employee", sortable: true },
     { key: "serialNumber" as keyof PC, label: "Serial No.", sortable: true, render: (v: PC[keyof PC]) => <span className="font-mono text-xs">{String(v)}</span> },
@@ -146,7 +156,7 @@ export default function PCInventory() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">PC Inventory</h1>
-          <p className="text-sm text-muted-foreground">{pcList.length} devices registered</p>
+          <p className="text-sm text-muted-foreground">{filteredPcList.length} devices registered</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -189,10 +199,26 @@ export default function PCInventory() {
         </Dialog>
       </div>
 
-      {/* Table — horizontally scrollable on mobile */}
+      {/* Filter Dropdown */}
+      <div className="flex items-center gap-2">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All ({pcList.length})</SelectItem>
+            <SelectItem value="available">Available ({pcList.filter(p => p.status === "available").length})</SelectItem>
+            <SelectItem value="assigned">Assigned ({pcList.filter(p => p.status === "assigned").length})</SelectItem>
+            <SelectItem value="maintenance">Maintenance ({pcList.filter(p => p.status === "maintenance").length})</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
       <div className="w-full overflow-x-auto rounded-lg">
         <DataTable
-          data={pcList}
+          data={filteredPcList} // ✅ pass filtered list instead of pcList
           columns={columns}
           searchKeys={["employeeName", "serialNumber", "ipAddress", "location", "manufacturer"]}
           actions={(row) => (
@@ -225,7 +251,6 @@ export default function PCInventory() {
                     <p className="font-medium break-all">{key === "status" ? <StatusBadge status={String(val)} /> : String(val) || "—"}</p>
                   </div>
                 ))}
-              {/* Password row with toggle */}
               <div className="col-span-2">
                 <p className="text-xs text-muted-foreground">Password</p>
                 <div className="flex items-center gap-2 mt-0.5">
