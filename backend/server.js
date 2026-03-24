@@ -12,7 +12,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:8080', 'http://localhost:5173'], // allow both common frontend ports
+    origin: ['http://localhost:8080', 'http://localhost:5173', 'https://it-asset-mu.vercel.app/'], // allow both common frontend ports
     credentials: true,
 }));
 app.use(express.json());

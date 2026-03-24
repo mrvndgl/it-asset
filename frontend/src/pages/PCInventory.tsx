@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 
 const API = "http://localhost:3000/api/pcs";
 
@@ -66,6 +67,8 @@ export default function PCInventory() {
   const [editingPc, setEditingPc] = useState<PC | null>(null);
   const [viewPc, setViewPc] = useState<PC | null>(null);
   const [showViewPassword, setShowViewPassword] = useState(false);
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search")?.toLowerCase() ?? "";
 
   const emptyPc: Omit<PC, "id"> = {
     employeeName: "", employeeId: "", serialNumber: "", manufacturer: "",
@@ -84,6 +87,18 @@ export default function PCInventory() {
       .then(data => setPcList(data))
       .catch(() => toast.error("Failed to fetch PCs from server"));
   }, []);
+
+  const filteredPcList = pcList.filter((pc) =>
+    !searchQuery ||
+    pc.employeeName.toLowerCase().includes(searchQuery) ||
+    pc.employeeId.toLowerCase().includes(searchQuery) ||
+    pc.serialNumber.toLowerCase().includes(searchQuery) ||
+    pc.ipAddress.toLowerCase().includes(searchQuery) ||
+    pc.manufacturer.toLowerCase().includes(searchQuery) ||
+    pc.model.toLowerCase().includes(searchQuery) ||
+    pc.location.toLowerCase().includes(searchQuery) ||
+    pc.assignedTo.toLowerCase().includes(searchQuery)
+  );
 
   const openAdd = () => { setEditingPc(null); setForm(emptyPc); setDialogOpen(true); };
   const openEdit = (pc: PC) => { setEditingPc(pc); setForm({ ...pc }); setDialogOpen(true); };
@@ -146,7 +161,9 @@ export default function PCInventory() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">PC Inventory</h1>
-          <p className="text-sm text-muted-foreground">{pcList.length} devices registered</p>
+          <p className="text-sm text-muted-foreground">
+            {filteredPcList.length} {searchQuery ? "results found" : "devices registered"}
+          </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -189,10 +206,10 @@ export default function PCInventory() {
         </Dialog>
       </div>
 
-      {/* Table — horizontally scrollable on mobile */}
+      {/* Table */}
       <div className="w-full overflow-x-auto rounded-lg">
         <DataTable
-          data={pcList}
+          data={filteredPcList}
           columns={columns}
           searchKeys={["employeeName", "serialNumber", "ipAddress", "location", "manufacturer"]}
           actions={(row) => (
@@ -225,7 +242,6 @@ export default function PCInventory() {
                     <p className="font-medium break-all">{key === "status" ? <StatusBadge status={String(val)} /> : String(val) || "—"}</p>
                   </div>
                 ))}
-              {/* Password row with toggle */}
               <div className="col-span-2">
                 <p className="text-xs text-muted-foreground">Password</p>
                 <div className="flex items-center gap-2 mt-0.5">
