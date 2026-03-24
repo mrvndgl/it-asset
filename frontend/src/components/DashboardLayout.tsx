@@ -53,9 +53,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
               )}
             </div>
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="shrink-0">
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
+            <div className="ml-auto">
+              <Button variant="ghost" size="icon" onClick={toggleTheme} className="shrink-0">
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+            </div>
           </header>
           <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
         </div>
