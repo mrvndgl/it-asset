@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-
-const API = "http://localhost:3000/api/departments";
+import { api } from "@/lib/api";
 
 const empty = { name: "", location: "", pcCount: 0, printerCount: 0 };
 
@@ -21,34 +20,27 @@ export default function Departments() {
   const [form, setForm] = useState(empty);
 
   useEffect(() => {
-    fetch(API)
-      .then(res => res.json())
+    api.get<Department[]>("/api/departments")
       .then(data => setDepartments(data))
       .catch(() => toast.error("Failed to fetch departments"));
   }, []);
 
   const openAdd = () => { setEditing(null); setForm(empty); setDialogOpen(true); };
-  const openEdit = (d: Department) => { setEditing(d); setForm({ name: d.name, location: d.location, pcCount: d.pcCount, printerCount: d.printerCount }); setDialogOpen(true); };
+  const openEdit = (d: Department) => {
+    setEditing(d);
+    setForm({ name: d.name, location: d.location, pcCount: d.pcCount, printerCount: d.printerCount });
+    setDialogOpen(true);
+  };
 
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Department name is required"); return; }
     try {
       if (editing) {
-        const res = await fetch(`${API}/${editing.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-        const updated: Department = await res.json();
+        const updated = await api.put<Department>(`/api/departments/${editing.id}`, form);
         setDepartments(prev => prev.map(d => d.id === editing.id ? updated : d));
         toast.success("Department updated");
       } else {
-        const res = await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-        const created: Department = await res.json();
+        const created = await api.post<Department>("/api/departments", form);
         setDepartments(prev => [...prev, created]);
         toast.success("Department added");
       }
@@ -60,7 +52,7 @@ export default function Departments() {
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`${API}/${id}`, { method: "DELETE" });
+      await api.delete(`/api/departments/${id}`);
       setDepartments(prev => prev.filter(d => d.id !== id));
       toast.success("Department deleted");
     } catch {

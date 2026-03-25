@@ -13,8 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-const API = "http://localhost:3000/api/printers";
+import { api } from "@/lib/api";
 
 const Field = ({ label, name, value, onChange }: {
   label: string;
@@ -29,7 +28,7 @@ const Field = ({ label, name, value, onChange }: {
 );
 
 export default function PrinterInventory() {
-  const [list, setList] = useState<Printer[]>([]);  // ✅ empty, fills from API
+  const [list, setList] = useState<Printer[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Printer | null>(null);
 
@@ -39,10 +38,8 @@ export default function PrinterInventory() {
   };
   const [form, setForm] = useState<Omit<Printer, "id">>(empty);
 
-  // ✅ Fetch from MongoDB on mount
   useEffect(() => {
-    fetch(API)
-      .then(res => res.json())
+    api.get<Printer[]>("/api/printers")
       .then(data => setList(data))
       .catch(() => toast.error("Failed to fetch printers"));
   }, []);
@@ -54,21 +51,11 @@ export default function PrinterInventory() {
     if (!form.printerName || !form.printerModel) { toast.error("Fill required fields"); return; }
     try {
       if (editing) {
-        const res = await fetch(`${API}/${editing.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-        const updated: Printer = await res.json();
+        const updated = await api.put<Printer>(`/api/printers/${editing.id}`, form);
         setList(prev => prev.map(p => p.id === editing.id ? updated : p));
         toast.success("Printer updated");
       } else {
-        const res = await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-        const created: Printer = await res.json();
+        const created = await api.post<Printer>("/api/printers", form);
         setList(prev => [...prev, created]);
         toast.success("Printer added");
       }
@@ -80,12 +67,7 @@ export default function PrinterInventory() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`${API}/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const err = await res.json();
-        toast.error(`Delete failed: ${err.error}`);
-        return;
-      }
+      await api.delete(`/api/printers/${id}`);
       setList(prev => prev.filter(p => p.id !== id));
       toast.success("Deleted");
     } catch {

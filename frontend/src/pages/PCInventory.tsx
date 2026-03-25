@@ -14,8 +14,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
-
-const API = "http://localhost:3000/api/pcs";
+import { api } from "@/lib/api";
 
 const Field = ({ label, name, value, placeholder, onChange, type = "text" }: {
   label: string;
@@ -82,8 +81,7 @@ export default function PCInventory() {
   };
 
   useEffect(() => {
-    fetch(API)
-      .then(res => res.json())
+    api.get<PC[]>("/api/pcs")
       .then(data => setPcList(data))
       .catch(() => toast.error("Failed to fetch PCs from server"));
   }, []);
@@ -110,21 +108,11 @@ export default function PCInventory() {
     }
     try {
       if (editingPc) {
-        const res = await fetch(`${API}/${editingPc.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-        const updated: PC = await res.json();
+        const updated = await api.put<PC>(`/api/pcs/${editingPc.id}`, form);
         setPcList(prev => prev.map(p => p.id === editingPc.id ? updated : p));
         toast.success("PC updated");
       } else {
-        const res = await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-        const created: PC = await res.json();
+        const created = await api.post<PC>("/api/pcs", form);
         setPcList(prev => [...prev, created]);
         toast.success("PC added");
       }
@@ -136,7 +124,7 @@ export default function PCInventory() {
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`${API}/${id}`, { method: "DELETE" });
+      await api.delete(`/api/pcs/${id}`);
       setPcList(prev => prev.filter(p => p.id !== id));
       toast.success("PC deleted");
     } catch {
