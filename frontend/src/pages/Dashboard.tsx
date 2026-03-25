@@ -8,9 +8,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
+import { api } from "@/lib/api";
 
 const COLORS = ["hsl(173, 80%, 40%)", "hsl(142, 71%, 45%)", "hsl(38, 92%, 50%)"];
-const API = "http://localhost:3000/api";
 
 export default function Dashboard() {
   const [pcs, setPcs] = useState<PC[]>([]);
@@ -18,18 +18,15 @@ export default function Dashboard() {
   const [departments, setDepartments] = useState<Department[]>([]);
 
   useEffect(() => {
-    fetch(`${API}/pcs`)
-      .then(res => res.json())
+    api.get<PC[]>("/api/pcs")
       .then(data => setPcs(data))
       .catch(err => console.error("Failed to fetch PCs", err));
 
-    fetch(`${API}/printers`)
-      .then(res => res.json())
+    api.get<PrinterType[]>("/api/printers")
       .then(data => setPrinters(data))
       .catch(err => console.error("Failed to fetch printers", err));
 
-    fetch(`${API}/departments`)
-      .then(res => res.json())
+    api.get<Department[]>("/api/departments")
       .then(data => setDepartments(data))
       .catch(err => console.error("Failed to fetch departments", err));
   }, []);
