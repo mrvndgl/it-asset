@@ -199,7 +199,6 @@ export default function PCInventory() {
         <DataTable
           data={filteredPcList}
           columns={columns}
-          searchKeys={["employeeName", "serialNumber", "ipAddress", "location", "manufacturer"]}
           actions={(row) => (
             <div className="flex items-center justify-end gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setShowViewPassword(false); setViewPc(row); }}>
