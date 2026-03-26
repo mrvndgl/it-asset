@@ -31,6 +31,12 @@ export default function Dashboard() {
       .catch(err => console.error("Failed to fetch departments", err));
   }, []);
 
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const recentCount = pcs.filter(
+    (p) => p.createdAt && new Date(p.createdAt) >= thirtyDaysAgo
+  ).length;
+
   const assigned = pcs.filter((p) => p.status === "assigned").length;
   const available = pcs.filter((p) => p.status === "available").length;
 
@@ -59,7 +65,7 @@ export default function Dashboard() {
         <StatCard title="Departments" value={departments.length} icon={Building2} variant="default" />
         <StatCard title="Assigned" value={assigned} icon={CheckCircle} variant="success" />
         <StatCard title="Available" value={available} icon={Package} variant="warning" />
-        <StatCard title="Recent" value="3" icon={Clock} description="Last 30 days" />
+        <StatCard title="Recent" value={recentCount} icon={Clock} description="Last 30 days" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -141,25 +147,60 @@ export default function Dashboard() {
           <CardTitle className="text-base font-medium">Recently Added Devices</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {pcs.slice(0, 4).map((pc) => (
-              <div key={pc.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary">
-                    <Monitor className="h-4 w-4 text-primary" />
+          {(() => {
+            // Group PCs by date added
+            const groups: Record<string, PC[]> = {};
+            [...pcs]
+              .filter((pc) => pc.createdAt)
+              .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+              .forEach((pc) => {
+                const date = new Date(pc.createdAt!).toLocaleDateString("en-US", {
+                  year: "numeric", month: "short", day: "numeric",
+                });
+                if (!groups[date]) groups[date] = [];
+                groups[date].push(pc);
+              });
+
+            const entries = Object.entries(groups).slice(0, 4); // show last 4 days that had additions
+
+            if (entries.length === 0) {
+              return <p className="text-sm text-muted-foreground">No devices added yet.</p>;
+            }
+
+            return (
+              <div className="space-y-4">
+                {entries.map(([date, devices]) => (
+                  <div key={date}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{date}</span>
+                      <span className="text-xs bg-secondary text-muted-foreground rounded-full px-2 py-0.5">
+                        {devices.length} device{devices.length > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {devices.map((pc) => (
+                        <div key={pc.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary">
+                              <Monitor className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{pc.manufacturer} {pc.model}</p>
+                              <p className="text-xs text-muted-foreground font-mono">{pc.serialNumber}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-muted-foreground hidden sm:inline">{pc.employeeName}</span>
+                            <StatusBadge status={pc.status} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{pc.manufacturer} {pc.model}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{pc.serialNumber}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">{pc.employeeName}</span>
-                  <StatusBadge status={pc.status} />
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>
