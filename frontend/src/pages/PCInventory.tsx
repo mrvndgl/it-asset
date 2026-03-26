@@ -138,6 +138,7 @@ export default function PCInventory() {
     { key: "manufacturer" as keyof PC, label: "Make", sortable: true },
     { key: "model" as keyof PC, label: "Model", sortable: true },
     { key: "ipAddress" as keyof PC, label: "IP", render: (v: PC[keyof PC]) => <span className="font-mono text-xs">{String(v)}</span> },
+    { key: "macAddress" as keyof PC, label: "MAC Address", render: (v: PC[keyof PC]) => <span className="font-mono text-xs">{String(v)}</span> },
     { key: "ram" as keyof PC, label: "RAM" },
     { key: "location" as keyof PC, label: "Location", sortable: true },
     { key: "status" as keyof PC, label: "Status", render: (v: PC[keyof PC]) => <StatusBadge status={String(v)} /> },

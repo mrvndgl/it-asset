@@ -4,7 +4,7 @@ import { Search, Moon, Sun } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/theme-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface DashboardLayoutProps {
@@ -26,12 +26,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     } else {
       params.delete("search");
     }
-    navigate({ pathname: "/pcs", search: params.toString() }, { replace: true });
+    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
   };
 
-  if (!isPCPage && search) {
-    setSearch("");
-  }
+  useEffect(() => {
+    if (!isPCPage) {
+      setSearch("");
+    }
+  }, [isPCPage]);
 
   return (
     <SidebarProvider>
