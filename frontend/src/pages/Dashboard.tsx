@@ -79,9 +79,12 @@ export default function Dashboard() {
                 <BarChart data={departmentChartData} barGap={4}>
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 10 }}
                     stroke="hsl(var(--muted-foreground))"
                     interval={0}
+                    angle={-35}
+                    textAnchor="end"
+                    height={50}
                   />
                   <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip

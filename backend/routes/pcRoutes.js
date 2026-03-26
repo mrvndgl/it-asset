@@ -1,8 +1,6 @@
 const express = require('express');
 const PC = require('../models/PC');
 
-// ✅ Removed printerRoutes and departmentRoutes — they don't belong here
-
 const router = express.Router();
 
 router.get('/', async (req, res) => {
@@ -26,7 +24,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
     try {
-        const updated = await PC.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updated = await PC.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
         if (!updated) return res.status(404).json({ error: 'PC not found' });
         res.json({ ...updated.toObject(), id: updated._id.toString() });
     } catch (err) {

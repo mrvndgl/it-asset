@@ -24,7 +24,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
     try {
-        const updated = await Printer.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updated = await Printer.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
         if (!updated) return res.status(404).json({ error: 'Printer not found' });
         res.json({ ...updated.toObject(), id: updated._id.toString() });
     } catch (err) {
