@@ -15,6 +15,7 @@ export interface PC {
   password: string;
   status: "assigned" | "available" | "maintenance";
   createdAt?: string;
+  department?: string;
 }
 
 export interface Printer {

@@ -9,5 +9,6 @@ const printerSchema = new mongoose.Schema({
     password: { type: String, default: '' },
     location: { type: String, default: '' },
     status: { type: String, enum: ['active', 'inactive', 'maintenance'], default: 'active' },
+    department: { type: String, default: '' },
 }, { timestamps: true });
 module.exports = mongoose.model('Printer', printerSchema);

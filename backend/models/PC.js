@@ -14,5 +14,6 @@ const pcSchema = new mongoose.Schema({
     assignedTo: { type: String, default: '' },
     password: { type: String, default: '' },
     status: { type: String, enum: ['assigned', 'available', 'maintenance'], default: 'available' },
+    department: { type: String, default: '' },
 }, { timestamps: true, collection: 'pcs' });
 module.exports = mongoose.model('PC', pcSchema);

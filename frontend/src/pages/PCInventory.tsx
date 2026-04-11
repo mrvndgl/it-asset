@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PC } from "@/lib/mock-data";
+import { PC, Department } from "@/lib/mock-data";
 import { DataTable } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,7 @@ const PasswordField = ({ label, name, value, onChange }: {
 
 export default function PCInventory() {
   const [pcList, setPcList] = useState<PC[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPc, setEditingPc] = useState<PC | null>(null);
   const [viewPc, setViewPc] = useState<PC | null>(null);
@@ -72,7 +73,8 @@ export default function PCInventory() {
   const emptyPc: Omit<PC, "id"> = {
     employeeName: "", employeeId: "", serialNumber: "", manufacturer: "",
     model: "", ipAddress: "", macAddress: "", ram: "", storage: "",
-    dateOfIssue: "", location: "", assignedTo: "", password: "", status: "available",
+    dateOfIssue: "", location: "", assignedTo: "", password: "",
+    status: "available", department: "",
   };
   const [form, setForm] = useState<Omit<PC, "id">>(emptyPc);
 
@@ -84,6 +86,10 @@ export default function PCInventory() {
     api.get<PC[]>("/api/pcs")
       .then(data => setPcList(data))
       .catch(() => toast.error("Failed to fetch PCs from server"));
+
+    api.get<Department[]>("/api/departments")
+      .then(data => setDepartments(data))
+      .catch(() => toast.error("Failed to fetch departments"));
   }, []);
 
   const filteredPcList = pcList.filter((pc) =>
@@ -95,7 +101,8 @@ export default function PCInventory() {
     pc.manufacturer.toLowerCase().includes(searchQuery) ||
     pc.model.toLowerCase().includes(searchQuery) ||
     pc.location.toLowerCase().includes(searchQuery) ||
-    pc.assignedTo.toLowerCase().includes(searchQuery)
+    pc.assignedTo.toLowerCase().includes(searchQuery) ||
+    (pc.department ?? "").toLowerCase().includes(searchQuery)
   );
 
   const openAdd = () => { setEditingPc(null); setForm(emptyPc); setDialogOpen(true); };
@@ -140,13 +147,11 @@ export default function PCInventory() {
     { key: "ipAddress" as keyof PC, label: "IP", render: (v: PC[keyof PC]) => <span className="font-mono text-xs">{String(v)}</span> },
     { key: "macAddress" as keyof PC, label: "MAC Address", render: (v: PC[keyof PC]) => <span className="font-mono text-xs">{String(v)}</span> },
     { key: "ram" as keyof PC, label: "RAM" },
-    { key: "location" as keyof PC, label: "Location", sortable: true },
-    { key: "status" as keyof PC, label: "Status", render: (v: PC[keyof PC]) => <StatusBadge status={String(v)} /> },
+    { key: "department" as keyof PC, label: "Department", sortable: true, render: (v: PC[keyof PC]) => <span className="block w-full">{v ? String(v) : <span className="text-muted-foreground">—</span>}</span> },
   ];
 
   return (
     <div className="space-y-4 sm:space-y-6 p-2 sm:p-0">
-      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">PC Inventory</h1>
@@ -178,9 +183,26 @@ export default function PCInventory() {
               <Field label="Location" name="location" value={form.location} onChange={handleFieldChange} />
               <Field label="Assigned To" name="assignedTo" value={form.assignedTo} onChange={handleFieldChange} />
               <PasswordField label="Password" name="password" value={form.password ?? ""} onChange={handleFieldChange} />
-              <div className="space-y-1 col-span-1 sm:col-span-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Department</Label>
+                <Select
+                  value={form.department ?? ""}
+                  onValueChange={(v) => setForm(f => ({ ...f, department: v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
                 <Label className="text-xs">Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v as PC["status"] }))}>
+                <Select
+                  value={form.status}
+                  onValueChange={(v) => setForm(f => ({ ...f, status: v as PC["status"] }))}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="assigned">Assigned</SelectItem>
@@ -195,7 +217,6 @@ export default function PCInventory() {
         </Dialog>
       </div>
 
-      {/* Table */}
       <div className="w-full overflow-x-auto rounded-lg">
         <DataTable
           data={filteredPcList}
@@ -216,7 +237,6 @@ export default function PCInventory() {
         />
       </div>
 
-      {/* View Dialog */}
       <Dialog open={!!viewPc} onOpenChange={(o) => !o && setViewPc(null)}>
         <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto rounded-xl">
           <DialogHeader><DialogTitle>PC Details</DialogTitle></DialogHeader>
@@ -227,7 +247,9 @@ export default function PCInventory() {
                 .map(([key, val]) => (
                   <div key={key}>
                     <p className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, " $1")}</p>
-                    <p className="font-medium break-all">{key === "status" ? <StatusBadge status={String(val)} /> : String(val) || "—"}</p>
+                    <p className="font-medium break-all">
+                      {key === "status" ? <StatusBadge status={String(val)} /> : String(val) || "—"}
+                    </p>
                   </div>
                 ))}
               <div className="col-span-2">

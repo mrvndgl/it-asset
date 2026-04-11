@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Printer } from "@/lib/mock-data";
+import { Printer, Department } from "@/lib/mock-data";
 import { DataTable } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const Field = ({ label, name, value, onChange }: {
 
 export default function PrinterInventory() {
   const [list, setList] = useState<Printer[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Printer | null>(null);
 
@@ -42,6 +43,10 @@ export default function PrinterInventory() {
     api.get<Printer[]>("/api/printers")
       .then(data => setList(data))
       .catch(() => toast.error("Failed to fetch printers"));
+
+    api.get<Department[]>("/api/departments")
+      .then(data => setDepartments(data))
+      .catch(() => toast.error("Failed to fetch departments"));
   }, []);
 
   const openAdd = () => { setEditing(null); setForm(empty); setDialogOpen(true); };
@@ -75,6 +80,10 @@ export default function PrinterInventory() {
     }
   };
 
+  const handleFieldChange = (name: string, value: string) => {
+    setForm(f => ({ ...f, [name]: value }));
+  };
+
   const columns = [
     { key: "printerName" as keyof Printer, label: "Name", sortable: true },
     { key: "printerModel" as keyof Printer, label: "Model", sortable: true },
@@ -84,10 +93,6 @@ export default function PrinterInventory() {
     { key: "location" as keyof Printer, label: "Location", sortable: true },
     { key: "status" as keyof Printer, label: "Status", render: (v: Printer[keyof Printer]) => <StatusBadge status={String(v)} /> },
   ];
-
-  const handleFieldChange = (name: string, value: string) => {
-    setForm(f => ({ ...f, [name]: value }));
-  };
 
   return (
     <div className="space-y-6">
@@ -107,7 +112,20 @@ export default function PrinterInventory() {
               <Field label="Model *" name="printerModel" value={form.printerModel} onChange={handleFieldChange} />
               <Field label="Toner Cartridge" name="tonerCartridge" value={form.tonerCartridge} onChange={handleFieldChange} />
               <Field label="Drum Unit" name="drumUnit" value={form.drumUnit} onChange={handleFieldChange} />
-              <Field label="Department" name="department" value={form.department} onChange={handleFieldChange} />
+              <div className="space-y-1">
+                <Label className="text-xs">Department</Label>
+                <Select
+                  value={form.department}
+                  onValueChange={(v) => setForm(f => ({ ...f, department: v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Field label="IP Address" name="ipAddress" value={form.ipAddress} onChange={handleFieldChange} />
               <Field label="Password" name="password" value={form.password} onChange={handleFieldChange} />
               <Field label="Location" name="location" value={form.location} onChange={handleFieldChange} />
