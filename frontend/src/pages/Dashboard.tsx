@@ -42,8 +42,8 @@ export default function Dashboard() {
 
   const departmentChartData = departments.map((d) => ({
     name: d.name,
-    PCs: d.pcCount,
-    Printers: d.printerCount,
+    PCs: pcs.filter(pc => (pc.department ?? "").toLowerCase() === d.name.toLowerCase()).length,
+    Printers: printers.filter(p => p.department.toLowerCase() === d.name.toLowerCase()).length,
   }));
 
   const statusData = [
