@@ -13,24 +13,42 @@ import PrinterInventory from "@/pages/PrinterInventory";
 import Departments from "@/pages/Departments";
 import Reports from "@/pages/Reports";
 import SettingsPage from "@/pages/SettingsPage";
+import Ticketing from "@/pages/Ticketing";
+import StaffManagement from "@/pages/StaffManagement";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Guard for admin-only routes
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (user?.role !== "admin") return <Navigate to="/tickets" replace />;
+  return <>{children}</>;
+}
+
 function ProtectedRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  // Staff lands on /tickets by default
+  const defaultRoute = user?.role === "admin" ? "/" : "/tickets";
 
   return (
     <DashboardLayout>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/pcs" element={<PCInventory />} />
-        <Route path="/printers" element={<PrinterInventory />} />
-        <Route path="/departments" element={<Departments />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="*" element={<NotFound />} />
+        {/* Admin only routes */}
+        <Route path="/" element={<AdminRoute><Dashboard /></AdminRoute>} />
+        <Route path="/pcs" element={<AdminRoute><PCInventory /></AdminRoute>} />
+        <Route path="/printers" element={<AdminRoute><PrinterInventory /></AdminRoute>} />
+        <Route path="/departments" element={<AdminRoute><Departments /></AdminRoute>} />
+        <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
+        <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+        <Route path="/staff" element={<AdminRoute><StaffManagement /></AdminRoute>} />
+
+        {/* All users */}
+        <Route path="/tickets" element={<Ticketing />} />
+
+        <Route path="*" element={<Navigate to={defaultRoute} replace />} />
       </Routes>
     </DashboardLayout>
   );

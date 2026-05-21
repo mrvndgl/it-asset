@@ -7,9 +7,10 @@ import {
   Settings,
   LogOut,
   Server,
+  Ticket,
+  Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import {
   Sidebar,
@@ -41,15 +42,26 @@ const mainItems = [
   { title: "PC Inventory", url: "/pcs", icon: Monitor },
   { title: "Printer Inventory", url: "/printers", icon: Printer },
   { title: "Departments", url: "/departments", icon: Building2 },
+  { title: "Ticketing", url: "/tickets", icon: Ticket },
   { title: "Reports", url: "/reports", icon: FileBarChart },
   { title: "Settings", url: "/settings", icon: Settings },
+];
+
+const staffItems = [
+  { title: "Ticketing", url: "/tickets", icon: Ticket },
+];
+
+const adminOnlyItems = [
+  { title: "Staff Management", url: "/staff", icon: Users },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
   const { logout, user } = useAuth();
+
+  const isAdmin = user?.role === "admin";
+  const navItems = isAdmin ? mainItems : staffItems;
 
   return (
     <Sidebar collapsible="icon">
@@ -60,8 +72,10 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-foreground">IT Assets</span>
-              <span className="text-xs text-muted-foreground">Inventory System</span>
+              <span className="text-sm font-semibold text-sidebar-foreground">Santrack</span>
+              <span className="text-xs text-muted-foreground">
+                {isAdmin ? "Inventory System" : "Support Portal"}
+              </span>
             </div>
           )}
         </div>
@@ -72,7 +86,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems.map((item) => (
+              {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -90,6 +104,31 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Admin only section */}
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminOnlyItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className="hover:bg-sidebar-accent/50"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      >
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
@@ -118,6 +157,7 @@ export function AppSidebar() {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
+                    type="button"
                     onClick={logout}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >

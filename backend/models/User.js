@@ -26,6 +26,11 @@ const userSchema = new mongoose.Schema(
             minlength: 6,
             select: false,
         },
+        department: {
+            type: String,
+            trim: true,
+            default: 'IT',
+        },
         role: {
             type: String,
             enum: ['admin', 'user'],
@@ -39,7 +44,6 @@ const userSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// Mongoose 7+ async pre-save — no next() parameter
 userSchema.pre('save', async function () {
     if (!this.isModified('password')) return;
     const salt = await bcrypt.genSalt(10);
