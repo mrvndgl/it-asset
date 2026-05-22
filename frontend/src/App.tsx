@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-context";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { NotificationProvider } from "@/lib/notification-context";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -19,7 +20,6 @@ import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Guard for admin-only routes
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   if (user?.role !== "admin") return <Navigate to="/tickets" replace />;
@@ -29,28 +29,24 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function ProtectedRoutes() {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-
-  // Staff lands on /tickets by default
   const defaultRoute = user?.role === "admin" ? "/" : "/tickets";
 
   return (
-    <DashboardLayout>
-      <Routes>
-        {/* Admin only routes */}
-        <Route path="/" element={<AdminRoute><Dashboard /></AdminRoute>} />
-        <Route path="/pcs" element={<AdminRoute><PCInventory /></AdminRoute>} />
-        <Route path="/printers" element={<AdminRoute><PrinterInventory /></AdminRoute>} />
-        <Route path="/departments" element={<AdminRoute><Departments /></AdminRoute>} />
-        <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
-        <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
-        <Route path="/staff" element={<AdminRoute><StaffManagement /></AdminRoute>} />
-
-        {/* All users */}
-        <Route path="/tickets" element={<Ticketing />} />
-
-        <Route path="*" element={<Navigate to={defaultRoute} replace />} />
-      </Routes>
-    </DashboardLayout>
+    <NotificationProvider>
+      <DashboardLayout>
+        <Routes>
+          <Route path="/" element={<AdminRoute><Dashboard /></AdminRoute>} />
+          <Route path="/pcs" element={<AdminRoute><PCInventory /></AdminRoute>} />
+          <Route path="/printers" element={<AdminRoute><PrinterInventory /></AdminRoute>} />
+          <Route path="/departments" element={<AdminRoute><Departments /></AdminRoute>} />
+          <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
+          <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+          <Route path="/staff" element={<AdminRoute><StaffManagement /></AdminRoute>} />
+          <Route path="/tickets" element={<Ticketing />} />
+          <Route path="*" element={<Navigate to={defaultRoute} replace />} />
+        </Routes>
+      </DashboardLayout>
+    </NotificationProvider>
   );
 }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Plus, Search, Ticket, Clock, CheckCircle2,
-  CircleDot, XCircle, Loader2,
+  CircleDot, XCircle, Loader2, Send,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,14 @@ type Priority = "Low" | "Medium" | "High" | "Critical";
 type Status = "Open" | "In Progress" | "Resolved" | "Closed";
 type Category = "Hardware" | "Software" | "Network" | "Account" | "Other";
 
+interface Comment {
+  _id: string;
+  comment: string;
+  postedBy: string;
+  role: "admin" | "user";
+  createdAt: string;
+}
+
 interface TicketItem {
   _id: string;
   ticketId: string;
@@ -36,6 +44,7 @@ interface TicketItem {
   department: string;
   submittedBy: string;
   createdAt: string;
+  comments: Comment[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -71,22 +80,17 @@ const statCards = [
 // ─── Submit Modal ─────────────────────────────────────────────────────────────
 
 function SubmitTicketModal({ open, onClose, onSuccess }: {
-  open: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  open: boolean; onClose: () => void; onSuccess: () => void;
 }) {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-
   const [form, setForm] = useState({
-    title: "",
-    description: "",
+    title: "", description: "",
     category: "Hardware" as Category,
     priority: "Medium" as Priority,
     department: !isAdmin ? (user as any)?.department ?? "IT" : "IT",
   });
   const [loading, setLoading] = useState(false);
-
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async () => {
@@ -105,19 +109,14 @@ function SubmitTicketModal({ open, onClose, onSuccess }: {
       onSuccess();
       onClose();
       setForm({ title: "", description: "", category: "Hardware", priority: "Medium", department: !isAdmin ? (user as any)?.department ?? "IT" : "IT" });
-    } catch {
-      toast.error("Request failed. Check your connection.");
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error("Request failed."); }
+    finally { setLoading(false); }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Submit New Ticket</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>Submit New Ticket</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label>Title</Label>
@@ -133,9 +132,7 @@ function SubmitTicketModal({ open, onClose, onSuccess }: {
               {isAdmin ? (
                 <Select value={form.department} onValueChange={v => set("department", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
                 </Select>
               ) : (
                 <Input value={form.department} disabled className="bg-muted" />
@@ -145,9 +142,7 @@ function SubmitTicketModal({ open, onClose, onSuccess }: {
               <Label>Category</Label>
               <Select value={form.category} onValueChange={v => set("category", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
+                <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           </div>
@@ -176,20 +171,42 @@ function SubmitTicketModal({ open, onClose, onSuccess }: {
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 
-function TicketDetailModal({ ticket, open, onClose, onStatusChange }: {
+function TicketDetailModal({ ticket, open, onClose, onStatusChange, onCommentAdded }: {
   ticket: TicketItem | null;
   open: boolean;
   onClose: () => void;
   onStatusChange: (id: string, status: Status) => void;
+  onCommentAdded: () => void;
 }) {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
   if (!ticket) return null;
   const sc = statusConfig[ticket.status];
 
+  const handleAddComment = async () => {
+    if (!comment.trim()) return;
+    setSubmitting(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${API_BASE}/api/tickets/${ticket._id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ comment }),
+      });
+      if (!res.ok) { toast.error("Failed to add comment"); return; }
+      toast.success("Comment added!");
+      setComment("");
+      onCommentAdded();
+    } catch { toast.error("Request failed."); }
+    finally { setSubmitting(false); }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.className}`}>
@@ -202,8 +219,10 @@ function TicketDetailModal({ ticket, open, onClose, onStatusChange }: {
           <p className="text-xs text-muted-foreground font-mono">{ticket.ticketId}</p>
           <DialogTitle className="text-base leading-snug">{ticket.title}</DialogTitle>
         </DialogHeader>
+
         <div className="space-y-4 py-1">
           <p className="text-sm text-muted-foreground leading-relaxed">{ticket.description || "No description provided."}</p>
+
           <div className="grid grid-cols-2 gap-3">
             {[
               ["Department", ticket.department],
@@ -217,6 +236,8 @@ function TicketDetailModal({ ticket, open, onClose, onStatusChange }: {
               </div>
             ))}
           </div>
+
+          {/* Admin — update status */}
           {isAdmin && ticket.status !== "Closed" && (
             <div className="space-y-2">
               <Label className="text-xs">Update Status</Label>
@@ -231,7 +252,48 @@ function TicketDetailModal({ ticket, open, onClose, onStatusChange }: {
               </div>
             </div>
           )}
+
+          {/* Comments Section */}
+          <div className="space-y-3">
+            <Label className="text-xs">
+              Comments {ticket.comments?.length > 0 && <span className="text-muted-foreground">({ticket.comments.length})</span>}
+            </Label>
+
+            {/* Comment List */}
+            {ticket.comments?.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2">No comments yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {ticket.comments.map(c => (
+                  <div key={c._id} className={`rounded-lg px-3 py-2 text-sm ${c.role === "admin" ? "bg-primary/5 border border-primary/10" : "bg-muted/50"}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold">{c.postedBy}</span>
+                      {c.role === "admin" && (
+                        <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">IT</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-foreground leading-relaxed">{c.comment}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Comment */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Write a comment..."
+                value={comment}
+                onChange={e => setComment(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleAddComment()}
+                className="flex-1 text-sm"
+              />
+              <Button size="sm" onClick={handleAddComment} disabled={!comment.trim() || submitting} className="shrink-0">
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>
         </DialogFooter>
@@ -243,10 +305,8 @@ function TicketDetailModal({ ticket, open, onClose, onStatusChange }: {
 // ─── Staff View ───────────────────────────────────────────────────────────────
 
 function StaffTicketingView({ tickets, loading, onNewTicket, onSelectTicket }: {
-  tickets: TicketItem[];
-  loading: boolean;
-  onNewTicket: () => void;
-  onSelectTicket: (ticket: TicketItem) => void;
+  tickets: TicketItem[]; loading: boolean;
+  onNewTicket: () => void; onSelectTicket: (t: TicketItem) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -261,15 +321,12 @@ function StaffTicketingView({ tickets, loading, onNewTicket, onSelectTicket }: {
       </div>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">
-            {tickets.length} Ticket{tickets.length !== 1 ? "s" : ""}
-          </CardTitle>
+          <CardTitle className="text-base font-medium">{tickets.length} Ticket{tickets.length !== 1 ? "s" : ""}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <p className="text-sm">Loading tickets...</p>
+              <Loader2 className="h-5 w-5 animate-spin" /><p className="text-sm">Loading tickets...</p>
             </div>
           ) : tickets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
@@ -289,6 +346,9 @@ function StaffTicketingView({ tickets, loading, onNewTicket, onSelectTicket }: {
                         <span className="text-xs text-muted-foreground font-mono">{ticket.ticketId}</span>
                         <span className="text-xs text-muted-foreground">·</span>
                         <span className="text-xs text-muted-foreground">{ticket.category}</span>
+                        {ticket.comments?.length > 0 && (
+                          <span className="text-xs text-muted-foreground">· 💬 {ticket.comments.length}</span>
+                        )}
                       </div>
                       <p className="text-sm font-medium truncate">{ticket.title}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{new Date(ticket.createdAt).toLocaleDateString()}</p>
@@ -310,21 +370,13 @@ function StaffTicketingView({ tickets, loading, onNewTicket, onSelectTicket }: {
 // ─── Admin View ───────────────────────────────────────────────────────────────
 
 function AdminTicketingView({ tickets, loading, onNewTicket, onSelectTicket, filterStatus, setFilterStatus, filterPriority, setFilterPriority, search, setSearch }: {
-  tickets: TicketItem[];
-  loading: boolean;
-  onNewTicket: () => void;
-  onSelectTicket: (ticket: TicketItem) => void;
-  filterStatus: string;
-  setFilterStatus: (v: string) => void;
-  filterPriority: string;
-  setFilterPriority: (v: string) => void;
-  search: string;
-  setSearch: (v: string) => void;
+  tickets: TicketItem[]; loading: boolean;
+  onNewTicket: () => void; onSelectTicket: (t: TicketItem) => void;
+  filterStatus: string; setFilterStatus: (v: string) => void;
+  filterPriority: string; setFilterPriority: (v: string) => void;
+  search: string; setSearch: (v: string) => void;
 }) {
-  const counts = STATUSES.reduce((acc, s) => ({
-    ...acc, [s]: tickets.filter(t => t.status === s).length
-  }), {} as Record<Status, number>);
-
+  const counts = STATUSES.reduce((acc, s) => ({ ...acc, [s]: tickets.filter(t => t.status === s).length }), {} as Record<Status, number>);
   const filtered = tickets.filter(t => {
     const matchStatus = filterStatus === "All" || t.status === filterStatus;
     const matchPriority = filterPriority === "All" || t.priority === filterPriority;
@@ -342,14 +394,12 @@ function AdminTicketingView({ tickets, loading, onNewTicket, onSelectTicket, fil
           <h1 className="text-2xl font-semibold tracking-tight">Ticketing</h1>
           <p className="text-sm text-muted-foreground">Manage and track IT support requests</p>
         </div>
-        <Button onClick={onNewTicket} size="sm" className="gap-2">
-          <Plus className="h-4 w-4" /> New Ticket
-        </Button>
+        <Button onClick={onNewTicket} size="sm" className="gap-2"><Plus className="h-4 w-4" /> New Ticket</Button>
       </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map(({ label, status, icon: Icon, color }) => (
-          <Card key={status}
-            className={`cursor-pointer transition-colors ${filterStatus === status ? "border-primary" : ""}`}
+          <Card key={status} className={`cursor-pointer transition-colors ${filterStatus === status ? "border-primary" : ""}`}
             onClick={() => setFilterStatus(filterStatus === status ? "All" : status)}>
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center justify-between mb-2">
@@ -361,6 +411,7 @@ function AdminTicketingView({ tickets, loading, onNewTicket, onSelectTicket, fil
           </Card>
         ))}
       </div>
+
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -381,6 +432,7 @@ function AdminTicketingView({ tickets, loading, onNewTicket, onSelectTicket, fil
           </SelectContent>
         </Select>
       </div>
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-medium">
@@ -391,13 +443,11 @@ function AdminTicketingView({ tickets, loading, onNewTicket, onSelectTicket, fil
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <p className="text-sm">Loading tickets...</p>
+              <Loader2 className="h-5 w-5 animate-spin" /><p className="text-sm">Loading tickets...</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-              <Ticket className="h-8 w-8 opacity-30" />
-              <p className="text-sm">No tickets found</p>
+              <Ticket className="h-8 w-8 opacity-30" /><p className="text-sm">No tickets found</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -413,17 +463,16 @@ function AdminTicketingView({ tickets, loading, onNewTicket, onSelectTicket, fil
                         <span className="text-xs text-muted-foreground">{ticket.department}</span>
                         <span className="text-xs text-muted-foreground">·</span>
                         <span className="text-xs text-muted-foreground">{ticket.category}</span>
+                        {ticket.comments?.length > 0 && (
+                          <span className="text-xs text-muted-foreground">· 💬 {ticket.comments.length}</span>
+                        )}
                       </div>
                       <p className="text-sm font-medium truncate">{ticket.title}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">by {ticket.submittedBy} · {new Date(ticket.createdAt).toLocaleDateString()}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`hidden sm:inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${priorityVariant[ticket.priority]}`}>
-                        {ticket.priority}
-                      </span>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.className}`}>
-                        {sc.icon}{ticket.status}
-                      </span>
+                      <span className={`hidden sm:inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${priorityVariant[ticket.priority]}`}>{ticket.priority}</span>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.className}`}>{sc.icon}{ticket.status}</span>
                     </div>
                   </div>
                 );
@@ -441,7 +490,6 @@ function AdminTicketingView({ tickets, loading, onNewTicket, onSelectTicket, fil
 export default function Ticketing() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -458,15 +506,23 @@ export default function Ticketing() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (res.ok) setTickets(data);
-    } catch {
-      toast.error("Failed to load tickets");
-    } finally {
-      setLoading(false);
-    }
+      if (res.ok) {
+        setTickets(data);
+        // Refresh selected ticket if detail modal is open
+        if (selectedTicket) {
+          const updated = data.find((t: TicketItem) => t._id === selectedTicket._id);
+          if (updated) setSelectedTicket(updated);
+        }
+      }
+    } catch { toast.error("Failed to load tickets"); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchTickets(); }, []);
+  useEffect(() => {
+    fetchTickets();
+    const interval = setInterval(fetchTickets, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleStatusChange = async (id: string, status: Status) => {
     try {
@@ -476,44 +532,34 @@ export default function Ticketing() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
       });
-      if (res.ok) {
-        toast.success("Status updated!");
-        fetchTickets();
-      }
-    } catch {
-      toast.error("Failed to update status");
-    }
+      if (res.ok) { toast.success("Status updated!"); fetchTickets(); }
+    } catch { toast.error("Failed to update status"); }
   };
 
   return (
     <>
       {isAdmin ? (
         <AdminTicketingView
-          tickets={tickets}
-          loading={loading}
+          tickets={tickets} loading={loading}
           onNewTicket={() => setShowSubmit(true)}
           onSelectTicket={(t) => { setSelectedTicket(t); setShowDetail(true); }}
-          filterStatus={filterStatus}
-          setFilterStatus={setFilterStatus}
-          filterPriority={filterPriority}
-          setFilterPriority={setFilterPriority}
-          search={search}
-          setSearch={setSearch}
+          filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+          filterPriority={filterPriority} setFilterPriority={setFilterPriority}
+          search={search} setSearch={setSearch}
         />
       ) : (
         <StaffTicketingView
-          tickets={tickets}
-          loading={loading}
+          tickets={tickets} loading={loading}
           onNewTicket={() => setShowSubmit(true)}
           onSelectTicket={(t) => { setSelectedTicket(t); setShowDetail(true); }}
         />
       )}
       <SubmitTicketModal open={showSubmit} onClose={() => setShowSubmit(false)} onSuccess={fetchTickets} />
       <TicketDetailModal
-        ticket={selectedTicket}
-        open={showDetail}
+        ticket={selectedTicket} open={showDetail}
         onClose={() => setShowDetail(false)}
         onStatusChange={handleStatusChange}
+        onCommentAdded={fetchTickets}
       />
     </>
   );

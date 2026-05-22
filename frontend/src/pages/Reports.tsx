@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, FileSpreadsheet, Monitor, Printer as PrinterIcon, Ticket, CheckCircle2, Clock, CircleDot } from "lucide-react";
 import { toast } from "sonner";
+import { getAuthToken } from "@/lib/auth-context";
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -11,7 +14,8 @@ type Priority = "Low" | "Medium" | "High" | "Critical";
 type Status = "Open" | "In Progress" | "Resolved" | "Closed";
 
 interface TicketRecord {
-  id: string;
+  _id: string;
+  ticketId: string;
   title: string;
   category: string;
   priority: Priority;
@@ -20,10 +24,6 @@ interface TicketRecord {
   submittedBy: string;
   createdAt: string;
 }
-
-// ─── Mock tickets (replace with API call later) ───────────────────────────────
-
-const MOCK_TICKETS: TicketRecord[] = [];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ function exportToCsv(data: Record<string, unknown>[], filename: string) {
 }
 
 function getCurrentMonth() {
-  return new Date().toISOString().slice(0, 7); // "2026-05"
+  return new Date().toISOString().slice(0, 7);
 }
 
 function getMonthLabel() {
@@ -55,21 +55,33 @@ function getMonthLabel() {
 export default function Reports() {
   const [pcs, setPcs] = useState<PC[]>([]);
   const [printers, setPrinters] = useState<Printer[]>([]);
-  const [tickets] = useState<TicketRecord[]>(MOCK_TICKETS);
+  const [tickets, setTickets] = useState<TicketRecord[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:3000/api/pcs")
+    const token = getAuthToken();
+
+    fetch(`${API_BASE}/api/pcs`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then(res => res.json())
       .then(data => setPcs(data))
       .catch(() => toast.error("Failed to fetch PCs"));
 
-    fetch("http://localhost:3000/api/printers")
+    fetch(`${API_BASE}/api/printers`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then(res => res.json())
       .then(data => setPrinters(data))
       .catch(() => toast.error("Failed to fetch printers"));
+
+    fetch(`${API_BASE}/api/tickets`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => setTickets(data))
+      .catch(() => toast.error("Failed to fetch tickets"));
   }, []);
 
-  // Filter tickets for current month
   const currentMonth = getCurrentMonth();
   const monthlyTickets = tickets.filter(t => t.createdAt.startsWith(currentMonth));
 

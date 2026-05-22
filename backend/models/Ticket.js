@@ -1,21 +1,19 @@
 const mongoose = require('mongoose');
 
+const commentSchema = new mongoose.Schema(
+    {
+        comment: { type: String, required: true, trim: true },
+        postedBy: { type: String, required: true },
+        role: { type: String, enum: ['admin', 'user'], default: 'user' },
+    },
+    { timestamps: true }
+);
+
 const ticketSchema = new mongoose.Schema(
     {
-        ticketId: {
-            type: String,
-            unique: true,
-        },
-        title: {
-            type: String,
-            required: [true, 'Title is required'],
-            trim: true,
-        },
-        description: {
-            type: String,
-            trim: true,
-            default: '',
-        },
+        ticketId: { type: String, unique: true },
+        title: { type: String, required: [true, 'Title is required'], trim: true },
+        description: { type: String, trim: true, default: '' },
         category: {
             type: String,
             enum: ['Hardware', 'Software', 'Network', 'Account', 'Other'],
@@ -31,21 +29,13 @@ const ticketSchema = new mongoose.Schema(
             enum: ['Open', 'In Progress', 'Resolved', 'Closed'],
             default: 'Open',
         },
-        department: {
-            type: String,
-            required: true,
-            trim: true,
-        },
-        submittedBy: {
-            type: String,
-            required: true,
-            trim: true,
-        },
+        department: { type: String, required: true, trim: true },
+        submittedBy: { type: String, required: true, trim: true },
+        comments: [commentSchema],
     },
     { timestamps: true }
 );
 
-// Auto-generate ticketId before saving
 ticketSchema.pre('save', async function () {
     if (this.ticketId) return;
     const count = await mongoose.model('Ticket').countDocuments();

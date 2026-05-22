@@ -45,11 +45,15 @@ export default function Login() {
       <Card className="w-full max-w-sm animate-fade-in">
         <CardHeader className="text-center space-y-4 pb-2">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Server className="h-6 w-6 text-primary-foreground" />
+           <img
+            src="/Santrack.png"
+            alt="Logo"
+             className="h-10 w-10"
+          />
           </div>
           <div>
-            <h1 className="text-xl font-semibold">IT Asset Manager</h1>
-            <p className="text-sm text-muted-foreground">Sign in to manage inventory</p>
+            <h1 className="text-xl font-semibold">Santrack</h1>
+            <p className="text-sm text-muted-foreground">Your workplace support portal</p>
           </div>
         </CardHeader>
         <CardContent>
@@ -103,7 +107,7 @@ export default function Login() {
               )}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
-              Authorized IT personnel only
+              Authorized personnel only
             </p>
           </form>
         </CardContent>

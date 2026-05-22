@@ -1,40 +1,20 @@
 import {
-  LayoutDashboard,
-  Monitor,
-  Printer,
-  Building2,
-  FileBarChart,
-  Settings,
-  LogOut,
-  Server,
-  Ticket,
-  Users,
+  LayoutDashboard, Monitor, Printer, Building2,
+  FileBarChart, Settings, LogOut, Server, Ticket, Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/lib/auth-context";
+import { useNotifications } from "@/lib/notification-context";
+import { useLocation } from "react-router-dom";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarFooter,
-  SidebarHeader,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarFooter, SidebarHeader, useSidebar,
 } from "@/components/ui/sidebar";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 const mainItems = [
@@ -42,13 +22,13 @@ const mainItems = [
   { title: "PC Inventory", url: "/pcs", icon: Monitor },
   { title: "Printer Inventory", url: "/printers", icon: Printer },
   { title: "Departments", url: "/departments", icon: Building2 },
-  { title: "Ticketing", url: "/tickets", icon: Ticket },
+  { title: "Ticketing", url: "/tickets", icon: Ticket, hasNotif: true },
   { title: "Reports", url: "/reports", icon: FileBarChart },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 const staffItems = [
-  { title: "Ticketing", url: "/tickets", icon: Ticket },
+  { title: "Ticketing", url: "/tickets", icon: Ticket, hasNotif: true },
 ];
 
 const adminOnlyItems = [
@@ -59,6 +39,8 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { logout, user } = useAuth();
+  const { unreadCount, clearNotifications } = useNotifications();
+  const location = useLocation();
 
   const isAdmin = user?.role === "admin";
   const navItems = isAdmin ? mainItems : staffItems;
@@ -67,14 +49,14 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Server className="h-4 w-4 text-primary-foreground" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden">
+            <img src="/Santrack.png" alt="Santrack" className="h-8 w-8 object-contain" />
           </div>
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-sidebar-foreground">Santrack</span>
               <span className="text-xs text-muted-foreground">
-                {isAdmin ? "Inventory System" : "Support Portal"}
+                {isAdmin ? "IT Management" : "Support Portal"}
               </span>
             </div>
           )}
@@ -94,9 +76,22 @@ export function AppSidebar() {
                       end={item.url === "/"}
                       className="hover:bg-sidebar-accent/50"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      onClick={() => item.hasNotif && clearNotifications()}
                     >
-                      <item.icon className="mr-2 h-4 w-4" />
+                      <div className="relative mr-2">
+                        <item.icon className="h-4 w-4" />
+                        {item.hasNotif && unreadCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </span>
+                        )}
+                      </div>
                       {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && item.hasNotif && unreadCount > 0 && (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -105,7 +100,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Admin only section */}
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Admin</SidebarGroupLabel>
