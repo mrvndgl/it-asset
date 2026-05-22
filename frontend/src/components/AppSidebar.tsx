@@ -56,7 +56,7 @@ export function AppSidebar() {
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-sidebar-foreground">Santrack</span>
               <span className="text-xs text-muted-foreground">
-                {isAdmin ? "IT Management" : "Support Portal"}
+                {isAdmin ? "Management System" : "Support Portal"}
               </span>
             </div>
           )}

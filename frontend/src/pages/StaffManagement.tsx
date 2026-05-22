@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, UserCheck, UserX, Shield, User, Pencil, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Plus, Search, UserCheck, UserX, Shield, User, Pencil, Trash2, Eye, EyeOff, Loader2, KeyRound } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ interface StaffMember {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DEPARTMENTS = ["IT", "Sales", "Accounts", "HR", "Logistics", "Procurement", "Store", "Safety and Security"];
+const DEPARTMENTS = ["Accounts", "HR", "IT", "Logistics", "Procurement", "Safety & Security", "Sales", "Store"];
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 // ─── Staff Form Modal ─────────────────────────────────────────────────────────
@@ -193,8 +193,32 @@ export default function StaffManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editData, setEditData] = useState<StaffMember | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
+  const [resetTarget, setResetTarget] = useState<StaffMember | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
-  const fetchStaff = async () => {
+  const handleResetPassword = async () => {
+    if (!newPassword.trim() || newPassword.length < 6 || !resetTarget) return;
+    setResetting(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${API_BASE}/api/auth/users/${resetTarget._id}/reset-password`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.message || "Failed to reset password"); return; }
+      toast.success(`Password reset for ${resetTarget.name}!`);
+      setResetTarget(null);
+      setNewPassword("");
+      setShowNewPassword(false);
+    } catch { toast.error("Request failed."); }
+    finally { setResetting(false); }
+  };
+
+    const fetchStaff = async () => {
     try {
       const token = getAuthToken();
       const res = await fetch(`${API_BASE}/api/auth/users`, {
@@ -351,6 +375,11 @@ export default function StaffManagement() {
                       onClick={() => { setEditData(member); setShowForm(true); }}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      onClick={() => { setResetTarget(member); setNewPassword(""); setShowNewPassword(false); }}
+                      disabled={member.employeeId === user?.employeeId}>
+                      <KeyRound className="h-3.5 w-3.5" />
+                    </Button>
                     <Button variant="ghost" size="sm"
                       className={`h-8 text-xs px-2 ${member.isActive ? "text-muted-foreground" : "text-success"}`}
                       onClick={() => handleToggleActive(member)}
@@ -394,6 +423,47 @@ export default function StaffManagement() {
               onClick={() => deleteTarget && handleDelete(deleteTarget._id)}
             >
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <AlertDialog open={!!resetTarget} onOpenChange={() => { setResetTarget(null); setNewPassword(""); setShowNewPassword(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Password</AlertDialogTitle>
+            <AlertDialogDescription>
+              Set a new password for <strong>{resetTarget?.name}</strong> ({resetTarget?.employeeId}).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="px-6 pb-2">
+            <div className="relative">
+              <Input
+                type={showNewPassword ? "text" : "password"}
+                placeholder="Min. 6 characters"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                className="pr-10"
+              />
+              <button type="button" onClick={() => setShowNewPassword(p => !p)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {newPassword.length > 0 && newPassword.length < 6 && (
+              <p className="text-xs text-destructive mt-1">Password must be at least 6 characters</p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              onClick={handleResetPassword}
+              disabled={newPassword.length < 6 || resetting}
+              className="gap-2"
+            >
+              {resetting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Resetting...</> : "Reset Password"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

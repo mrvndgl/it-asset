@@ -231,5 +231,30 @@ router.patch('/users/:id/toggle-active', authMiddleware, adminMiddleware, async 
     }
 });
 
+
+/**
+ * @route  PATCH /api/auth/users/:id/reset-password
+ * @desc   Admin resets a user's password
+ * @access Admin    
+ */
+router.patch('/users/:id/reset-password', authMiddleware, adminMiddleware, async (req, res) => {
+    const { newPassword } = req.body;
+
+    if (!newPassword?.trim() || newPassword.length < 6)
+        return res.status(400).json({ message: 'Password must be at least 6 characters' });
+
+    try {
+        const user = await User.findById(req.params.id).select('+password');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        user.password = newPassword;
+        await user.save(); // pre('save') hook will hash it
+        res.json({ message: 'Password reset successfully' });
+    } catch (err) {
+        console.error('Reset password error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 module.exports = router;
 module.exports.authMiddleware = authMiddleware;

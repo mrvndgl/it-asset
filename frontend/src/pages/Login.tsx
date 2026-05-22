@@ -43,12 +43,12 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm animate-fade-in">
-        <CardHeader className="text-center space-y-4 pb-2">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+        <CardHeader className="text-center space-y-1 pb-2">
+          <div className="mx-auto flex items-center justify-center rounded-xl">
            <img
             src="/Santrack.png"
             alt="Logo"
-             className="h-10 w-10"
+             className="h-14 w-14"
           />
           </div>
           <div>
