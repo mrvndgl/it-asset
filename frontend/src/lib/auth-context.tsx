@@ -21,16 +21,21 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
   login: async () => false,
-  logout: () => { },
+  logout: () => {},
 });
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem("it-asset-user");
     return stored ? JSON.parse(stored) : null;
   });
 
-  const login = async (employeeId: string, password: string): Promise<boolean> => {
+  const login = async (
+    employeeId: string,
+    password: string,
+  ): Promise<boolean> => {
     try {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
@@ -60,7 +65,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated: !!user, user, login, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated: !!user, user, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

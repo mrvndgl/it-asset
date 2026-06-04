@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { useAuth, getAuthToken } from "@/lib/auth-context";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -15,11 +21,16 @@ const NotificationContext = createContext<NotificationContextType>({
   refreshNotifications: () => {},
 });
 
-export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { user, isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastChecked, setLastChecked] = useState<string>(() => {
-    return localStorage.getItem(`santrack-notif-checked-${user?.employeeId}`) || new Date().toISOString();
+    return (
+      localStorage.getItem(`santrack-notif-checked-${user?.employeeId}`) ||
+      new Date().toISOString()
+    );
   });
 
   const fetchNotifications = useCallback(async () => {
@@ -31,15 +42,23 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
       if (!res.ok) return;
       const tickets = await res.json();
-      const checked = localStorage.getItem(`santrack-notif-checked-${user.employeeId}`) || new Date().toISOString();
+      const checked =
+        localStorage.getItem(`santrack-notif-checked-${user.employeeId}`) ||
+        new Date().toISOString();
 
       let count = 0;
       if (user.role === "admin") {
         // Admin: count new tickets submitted after last checked
-        count = tickets.filter((t: any) => new Date(t.createdAt) > new Date(checked)).length;
+        count = tickets.filter(
+          (t: any) => new Date(t.createdAt) > new Date(checked),
+        ).length;
       } else {
         // Staff: count tickets whose status changed after last checked
-        count = tickets.filter((t: any) => new Date(t.updatedAt) > new Date(checked) && t.submittedBy === user.name).length;
+        count = tickets.filter(
+          (t: any) =>
+            new Date(t.updatedAt) > new Date(checked) &&
+            t.submittedBy === user.name,
+        ).length;
       }
       setUnreadCount(count);
     } catch {
@@ -64,7 +83,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [user]);
 
   return (
-    <NotificationContext.Provider value={{ unreadCount, clearNotifications, refreshNotifications: fetchNotifications }}>
+    <NotificationContext.Provider
+      value={{
+        unreadCount,
+        clearNotifications,
+        refreshNotifications: fetchNotifications,
+      }}
+    >
       {children}
     </NotificationContext.Provider>
   );
