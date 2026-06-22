@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Plus,
   Search,
@@ -60,6 +60,11 @@ interface TicketItem {
   submittedBy: string;
   createdAt: string;
   comments: Comment[];
+}
+
+interface AuthUser {
+  role: "admin" | "user";
+  department?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -155,12 +160,13 @@ function SubmitTicketModal({
 }) {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const authUser = user as AuthUser | null;
   const [form, setForm] = useState({
     title: "",
     description: "",
     category: "Hardware" as Category,
     priority: "Medium" as Priority,
-    department: !isAdmin ? ((user as any)?.department ?? "IT") : "IT",
+    department: !isAdmin ? (authUser?.department ?? "IT") : "IT",
   });
   const [loading, setLoading] = useState(false);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -191,7 +197,7 @@ function SubmitTicketModal({
         description: "",
         category: "Hardware",
         priority: "Medium",
-        department: !isAdmin ? ((user as any)?.department ?? "IT") : "IT",
+        department: !isAdmin ? (authUser?.department ?? "IT") : "IT",
       });
     } catch {
       toast.error("Request failed.");
@@ -805,10 +811,11 @@ export default function Ticketing() {
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [filterPriority, setFilterPriority] = useState<string>("All");
   const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
+  const selectedTicketRef = useRef<TicketItem | null>(null);
   const [showSubmit, setShowSubmit] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
 
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     try {
       const token = getAuthToken();
       const res = await fetch(`${API_BASE}/api/tickets`, {
@@ -817,7 +824,6 @@ export default function Ticketing() {
       const data = await res.json();
       if (res.ok) {
         setTickets(data);
-        // Refresh selected ticket if detail modal is open
         if (selectedTicket) {
           const updated = data.find(
             (t: TicketItem) => t._id === selectedTicket._id,
@@ -830,7 +836,13 @@ export default function Ticketing() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTicket]);
+
+  useEffect(() => {
+    fetchTickets();
+    const interval = setInterval(fetchTickets, 15000);
+    return () => clearInterval(interval);
+  }, [fetchTickets]);
 
   useEffect(() => {
     fetchTickets();
