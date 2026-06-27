@@ -824,10 +824,9 @@ export default function Ticketing() {
       const data = await res.json();
       if (res.ok) {
         setTickets(data);
-        if (selectedTicket) {
-          const updated = data.find(
-            (t: TicketItem) => t._id === selectedTicket._id,
-          );
+        const current = selectedTicketRef.current;
+        if (current) {
+          const updated = data.find((t: TicketItem) => t._id === current._id);
           if (updated) setSelectedTicket(updated);
         }
       }
@@ -836,19 +835,19 @@ export default function Ticketing() {
     } finally {
       setLoading(false);
     }
+  }, []); // stable now — no deps needed
+
+  // keep the ref in sync whenever selection changes
+  useEffect(() => {
+    selectedTicketRef.current = selectedTicket;
   }, [selectedTicket]);
 
+  // single polling effect
   useEffect(() => {
     fetchTickets();
     const interval = setInterval(fetchTickets, 15000);
     return () => clearInterval(interval);
   }, [fetchTickets]);
-
-  useEffect(() => {
-    fetchTickets();
-    const interval = setInterval(fetchTickets, 15000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleStatusChange = async (id: string, status: Status) => {
     try {
